@@ -1,9 +1,6 @@
 {
   "functions": {
-    "api/getReading.ts": {
-      "runtime": "edge"
-    },
-    "api/getInterpretation.ts": {
+    "api/**/*.ts": {
       "runtime": "edge"
     }
   }
