@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import type { DrawnCard, Language } from "../types";
 
