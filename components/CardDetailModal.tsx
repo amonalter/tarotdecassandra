@@ -29,7 +29,7 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({ isOpen, cardData, onC
   const [interpretation, setInterpretation] = useState('');
 
   useEffect(() => {
-    if (cardData) {
+    if (isOpen && cardData) {
       const fetchInterpretation = async () => {
         setIsLoading(true);
         setInterpretation('');
@@ -43,7 +43,7 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({ isOpen, cardData, onC
       };
       fetchInterpretation();
     }
-  }, [cardData, language, t]);
+  }, [isOpen, cardData, language, t]);
 
   if (!isOpen || !cardData) {
     return null;
