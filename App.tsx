@@ -9,7 +9,6 @@ import LoadingSpinner from './components/LoadingSpinner';
 import CardDetailModal from './components/CardDetailModal';
 import SpreadPreview from './components/SpreadPreview';
 import TarotLibrary from './components/TarotLibrary';
-import AdSenseUnit from './components/AdSenseUnit';
 
 type GameState = 'selection' | 'choosing' | 'drawing' | 'reading' | 'library';
 
@@ -30,7 +29,6 @@ const translations = {
     connecting: "Connecting to the cosmos...",
     newReading: "New Reading",
     errorReading: "I'm sorry, but I'm unable to connect with the ethereal plane right now. Please try again later.",
-    errorInvalidKey: "The server's API Key is not configured correctly. Please contact the site administrator.",
     errorInterpretation: "I'm sorry, the connection to the card's wisdom is currently obscured. Please try again in a moment.",
     modalKeywords: "Keywords:",
     modalInterpretation: "In-Depth Interpretation:",
@@ -55,7 +53,6 @@ const translations = {
     connecting: "Conectando-se ao cosmos...",
     newReading: "Nova Leitura",
     errorReading: "Desculpe, não consigo me conectar ao plano etéreo no momento. Por favor, tente novamente mais tarde.",
-    errorInvalidKey: "A Chave de API do servidor não está configurada corretamente. Por favor, contate o administrador do site.",
     errorInterpretation: "Desculpe, a conexão com a sabedoria da carta está atualmente obscurecida. Por favor, tente novamente em um momento.",
     modalKeywords: "Palavras-chave:",
     modalInterpretation: "Interpretação Aprofundada:",
@@ -138,21 +135,26 @@ const App: React.FC = () => {
     setChosenDeckIndices(prev => [...prev, deckIndex]);
   };
 
+  const handleError = (error: any) => {
+    const message = error.message || t('errorReading');
+    const userFriendlyMessage = `${t('errorReading')} (${message})`;
+    setReading(userFriendlyMessage);
+  };
+
   const generateReading = useCallback(async (currentDrawnDetails: DrawnCardDetails[]) => {
     if (!selectedSpread || currentDrawnDetails.length === 0) return;
     setIsLoading(true);
     setReading('');
-    const fullCardsForReading = getFullDrawnCards(currentDrawnDetails);
-    const result = await getTarotReading(fullCardsForReading, selectedSpread, language);
-    if (result.includes("Invalid API Key")) {
-      setReading(t('errorInvalidKey'));
-    } else if (result.startsWith("Error:")) {
-      setReading(t('errorReading'));
-    } else {
+    try {
+      const fullCardsForReading = getFullDrawnCards(currentDrawnDetails);
+      const result = await getTarotReading(fullCardsForReading, selectedSpread, language);
       setReading(result);
+    } catch(error) {
+      handleError(error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [selectedSpread, language, t, getFullDrawnCards]);
+  }, [selectedSpread, language, getFullDrawnCards, t]);
   
   useEffect(() => {
     if (gameState === 'choosing' && selectedSpread && chosenDeckIndices.length === selectedSpread.cardCount) {
@@ -168,21 +170,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (gameState === 'drawing' && drawnCardDetails.length > 0) {
-      const initialReading = async () => {
-        setIsLoading(true);
-        setReading('');
-        const fullCardsForReading = getFullDrawnCards(drawnCardDetails);
-        const result = await getTarotReading(fullCardsForReading, selectedSpread, language);
-         if (result.includes("Invalid API Key")) {
-          setReading(t('errorInvalidKey'));
-        } else if (result.startsWith("Error:")) {
-          setReading(t('errorReading'));
-        } else {
-          setReading(result);
-        }
-        setIsLoading(false);
-      }
-      initialReading();
+      generateReading(drawnCardDetails);
       
       const flipTimers = drawnCardDetails.map((_, index) => 
         setTimeout(() => {
@@ -203,26 +191,12 @@ const App: React.FC = () => {
         clearTimeout(readingTimer);
       };
     }
-  }, [gameState, drawnCardDetails, getFullDrawnCards, selectedSpread, language, t]);
+  }, [gameState, drawnCardDetails, generateReading]);
   
   useEffect(() => {
     const isReadingAvailable = reading && !reading.startsWith(t('errorReading')) && !isLoading;
     if (gameState === 'reading' && isReadingAvailable) {
-        const updateReadingForLanguage = async () => {
-            if (!selectedSpread || drawnCardDetails.length === 0) return;
-            setIsLoading(true);
-            const fullCardsForReading = getFullDrawnCards(drawnCardDetails);
-            const result = await getTarotReading(fullCardsForReading, selectedSpread, language);
-            if (result.includes("Invalid API Key")) {
-              setReading(t('errorInvalidKey'));
-            } else if (result.startsWith("Error:")) {
-              setReading(t('errorReading'));
-            } else {
-              setReading(result);
-            }
-            setIsLoading(false);
-        }
-        updateReadingForLanguage();
+        generateReading(drawnCardDetails);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
@@ -247,7 +221,7 @@ const App: React.FC = () => {
   const handleCloseModal = () => {
     setSelectedCardDetailsForModal(null);
   };
-  
+
   const selectedCardForModal = useMemo(() => {
       if (!selectedCardDetailsForModal) return null;
       return {
@@ -417,9 +391,6 @@ const App: React.FC = () => {
             >
               {t('newReading')}
             </button>
-            <div className="mt-8">
-              <AdSenseUnit adSlot="XXXXXXXXXX" />
-            </div>
           </div>
         );
     }

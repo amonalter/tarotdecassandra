@@ -33,13 +33,18 @@ const CardDetailModal: React.FC<CardDetailModalProps> = ({ isOpen, cardData, onC
       const fetchInterpretation = async () => {
         setIsLoading(true);
         setInterpretation('');
-        const result = await getCardInterpretation(cardData, language);
-        if (result.startsWith("Error:")) {
-          setInterpretation(t('errorInterpretation'));
-        } else {
+        try {
+          const result = await getCardInterpretation(cardData, language);
           setInterpretation(result);
+        } catch (error) {
+            if (error instanceof Error) {
+                setInterpretation(error.message);
+            } else {
+                setInterpretation(t('errorInterpretation'));
+            }
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
       };
       fetchInterpretation();
     }

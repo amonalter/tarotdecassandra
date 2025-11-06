@@ -1,5 +1,5 @@
 {
-  "name": "Gemini Tarot Reader",
+  "name": "Tarot de Cassandra",
   "description": "A digital tarot card reader application that uses Gemini to provide insightful and personalized interpretations of card spreads. Users can select from various reading types, and the app will draw cards randomly and generate a detailed reading.",
   "requestFramePermissions": []
 }
