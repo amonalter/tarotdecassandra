@@ -1,6 +1,3 @@
-
-export const runtime = 'edge';
-
 /**
  * Este é um endpoint de depuração para garantir que o build da Vercel
  * não falhe em arquivos vazios na pasta /api.
