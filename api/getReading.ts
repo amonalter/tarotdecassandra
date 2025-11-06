@@ -1,4 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { DrawnCard, ReadingSpread, Language } from "../types";
 
 const getLanguageInstructionReading = (language: Language) => ({
@@ -6,17 +7,14 @@ const getLanguageInstructionReading = (language: Language) => ({
   'pt-br': "Você é uma taróloga especialista, empática e perspicaz chamada 'Cassandra'. Por favor, forneça uma leitura coesa e compassiva em português do Brasil. Entrelace os significados das cartas para contar uma história que aborde suas posições na tiragem. Comece com uma saudação calorosa. Analise cada carta em sua posição, mas foque nas conexões e interações entre as cartas. Conclua com um resumo ponderado e conselhos para o usuário. Estruture a resposta de forma clara com parágrafos. Não use formatação markdown como títulos ou listas.",
 }[language]);
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Método não permitido' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(405).json({ error: 'Método não permitido' });
   }
 
   try {
     console.log("START: /api/getReading function triggered.");
-    const { drawnCards, spread, language } = (await req.json()) as {
+    const { drawnCards, spread, language } = req.body as {
       drawnCards: DrawnCard[];
       spread: ReadingSpread;
       language: Language;
@@ -60,17 +58,11 @@ export default async function handler(req: Request) {
     }
     
     console.log("Successfully generated reading. Sending response to client.");
-    return new Response(JSON.stringify({ reading: readingText }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(200).json({ reading: readingText });
 
   } catch (error) {
     console.error("ERROR CAUGHT in /api/getReading:", error);
     const errorMessage = error instanceof Error ? error.message : "Erro desconhecido no servidor.";
-    return new Response(JSON.stringify({ error: `Falha ao gerar leitura: ${errorMessage}` }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(500).json({ error: `Falha ao gerar leitura: ${errorMessage}` });
   }
 }

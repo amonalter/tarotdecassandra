@@ -1,4 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { DrawnCard, Language } from "../types";
 
 const getLanguageInstructionInterpretation = (language: Language, orientation: string) => ({
@@ -7,17 +8,14 @@ const getLanguageInstructionInterpretation = (language: Language, orientation: s
 }[language]);
 
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Método não permitido' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(405).json({ error: 'Método não permitido' });
   }
 
   try {
     console.log("START: /api/getInterpretation function triggered.");
-    const { drawnCard, language } = (await req.json()) as {
+    const { drawnCard, language } = req.body as {
       drawnCard: DrawnCard;
       language: Language;
     };
@@ -60,17 +58,11 @@ export default async function handler(req: Request) {
     }
     
     console.log("Successfully generated interpretation. Sending response to client.");
-    return new Response(JSON.stringify({ interpretation: interpretationText }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(200).json({ interpretation: interpretationText });
 
   } catch (error) {
     console.error("ERROR CAUGHT in /api/getInterpretation:", error);
     const errorMessage = error instanceof Error ? error.message : "Erro desconhecido no servidor.";
-    return new Response(JSON.stringify({ error: `Falha ao gerar interpretação: ${errorMessage}` }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(500).json({ error: `Falha ao gerar interpretação: ${errorMessage}` });
   }
 }
