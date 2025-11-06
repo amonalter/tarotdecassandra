@@ -34,15 +34,16 @@ export default async function handler(req: Request) {
       })
       .join("\n");
 
-    const prompt = `
-      ${getLanguageInstructionReading(language)}
-      Um usuário solicitou uma leitura de "${spread.name}". Ele(a) tirou as seguintes cartas:
-      ${cardDescriptions}
-    `;
+    const systemInstruction = getLanguageInstructionReading(language);
+    const userPrompt = `Um usuário solicitou uma leitura de "${spread.name}". Ele(a) tirou as seguintes cartas:
+      ${cardDescriptions}`;
 
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemInstruction,
+        },
     });
 
     const readingText = response.text;

@@ -33,17 +33,17 @@ export default async function handler(req: Request) {
       
     const interpretationToUse = drawnCard.isReversed ? drawnCard.card.interpretation_rev : drawnCard.card.interpretation_up;
 
-    const prompt = `
-      ${getLanguageInstructionInterpretation(language, orientation)}
-
-      Carta: "${drawnCard.card.name}" (${orientation})
+    const systemInstruction = getLanguageInstructionInterpretation(language, orientation);
+    const userPrompt = `Carta: "${drawnCard.card.name}" (${orientation})
       Palavras-chave: ${drawnCard.isReversed ? drawnCard.card.meaning_rev : drawnCard.card.meaning_up}
-      Interpretação Base: ${interpretationToUse}
-    `;
+      Interpretação Base: ${interpretationToUse}`;
 
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemInstruction,
+        },
     });
     
     const interpretationText = response.text;
