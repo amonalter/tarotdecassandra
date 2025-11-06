@@ -16,15 +16,19 @@ export default async function handler(req: Request) {
   }
 
   try {
+    console.log("START: /api/getInterpretation function triggered.");
     const { drawnCard, language } = (await req.json()) as {
       drawnCard: DrawnCard;
       language: Language;
     };
+    console.log(`Payload received: card='${drawnCard.card.name}', language='${language}'`);
 
     if (!process.env.API_KEY) {
-        throw new Error("A variável de ambiente API_KEY não foi definida no servidor.");
+        console.error("CRITICAL ERROR: API_KEY environment variable not found on the server.");
+        throw new Error("A chave de API não está configurada no servidor.");
     }
 
+    console.log("API_KEY found. Initializing GoogleGenAI...");
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const orientation = drawnCard.isReversed
@@ -37,6 +41,8 @@ export default async function handler(req: Request) {
     const userPrompt = `Carta: "${drawnCard.card.name}" (${orientation})
       Palavras-chave: ${drawnCard.isReversed ? drawnCard.card.meaning_rev : drawnCard.card.meaning_up}
       Interpretação Base: ${interpretationToUse}`;
+      
+    console.log("Prompt generated. Sending request to Gemini model 'gemini-2.5-flash'...");
 
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -45,20 +51,23 @@ export default async function handler(req: Request) {
           systemInstruction: systemInstruction,
         },
     });
+    console.log("Response received from Gemini.");
     
     const interpretationText = response.text;
     if (!interpretationText) {
-        throw new Error("O modelo retornou uma resposta vazia.");
+        console.warn("Gemini response was empty. This might be due to safety filters. Full response object:", JSON.stringify(response, null, 2));
+        throw new Error("O modelo retornou uma resposta vazia. Isso pode acontecer devido a filtros de segurança internos.");
     }
     
+    console.log("Successfully generated interpretation. Sending response to client.");
     return new Response(JSON.stringify({ interpretation: interpretationText }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error("Erro na função API getInterpretation:", error);
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+    console.error("ERROR CAUGHT in /api/getInterpretation:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido no servidor.";
     return new Response(JSON.stringify({ error: `Falha ao gerar interpretação: ${errorMessage}` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

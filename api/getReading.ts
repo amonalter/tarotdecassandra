@@ -15,16 +15,20 @@ export default async function handler(req: Request) {
   }
 
   try {
+    console.log("START: /api/getReading function triggered.");
     const { drawnCards, spread, language } = (await req.json()) as {
       drawnCards: DrawnCard[];
       spread: ReadingSpread;
       language: Language;
     };
+    console.log(`Payload received: spread='${spread.name}', language='${language}', cards=${drawnCards.length}`);
 
     if (!process.env.API_KEY) {
-        throw new Error("A variável de ambiente API_KEY não foi definida no servidor.");
+        console.error("CRITICAL ERROR: API_KEY environment variable not found on the server.");
+        throw new Error("A chave de API não está configurada no servidor.");
     }
     
+    console.log("API_KEY found. Initializing GoogleGenAI...");
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const cardDescriptions = drawnCards
@@ -37,6 +41,8 @@ export default async function handler(req: Request) {
     const systemInstruction = getLanguageInstructionReading(language);
     const userPrompt = `Um usuário solicitou uma leitura de "${spread.name}". Ele(a) tirou as seguintes cartas:
       ${cardDescriptions}`;
+      
+    console.log("Prompt generated. Sending request to Gemini model 'gemini-2.5-flash'...");
 
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -45,20 +51,23 @@ export default async function handler(req: Request) {
           systemInstruction: systemInstruction,
         },
     });
+    console.log("Response received from Gemini.");
 
     const readingText = response.text;
     if (!readingText) {
-        throw new Error("O modelo retornou uma resposta vazia.");
+        console.warn("Gemini response was empty. This might be due to safety filters. Full response object:", JSON.stringify(response, null, 2));
+        throw new Error("O modelo retornou uma resposta vazia. Isso pode acontecer devido a filtros de segurança internos.");
     }
-
+    
+    console.log("Successfully generated reading. Sending response to client.");
     return new Response(JSON.stringify({ reading: readingText }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error("Erro na função API getReading:", error);
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+    console.error("ERROR CAUGHT in /api/getReading:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido no servidor.";
     return new Response(JSON.stringify({ error: `Falha ao gerar leitura: ${errorMessage}` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
