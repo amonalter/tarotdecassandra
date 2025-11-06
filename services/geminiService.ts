@@ -15,12 +15,10 @@ export const getTarotReading = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      // Propaga erros específicos do backend
-      if (errorData.error && errorData.error.includes("API Key is not valid")) {
-        return "Error: Invalid API Key on server.";
-      }
-      throw new Error(`Server error: ${response.statusText}`);
+      // Tenta extrair a mensagem de erro do corpo JSON, com um fallback para o status text.
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData.error?.message || response.statusText;
+      throw new Error(message);
     }
 
     const data = await response.json();
@@ -28,9 +26,13 @@ export const getTarotReading = async (
 
   } catch (error) {
     console.error("Error fetching tarot reading:", error);
-    if (error instanceof Error && error.message.includes('Invalid API Key')) {
-       return "Error: The server's API Key is not configured correctly. Please contact the site administrator.";
+    if (error instanceof Error) {
+        // Verifica se há um erro específico de chave de API para retornar uma mensagem dedicada.
+        if (error.message.includes('API Key')) {
+           return "Error: Invalid API Key on server.";
+        }
     }
+    // Retorna uma mensagem de erro genérica para outros problemas.
     return "Error: Unable to generate reading.";
   }
 };
@@ -49,7 +51,9 @@ export const getCardInterpretation = async (
     });
 
     if (!response.ok) {
-      throw new Error(`Server error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData.error?.message || response.statusText;
+      throw new Error(message);
     }
 
     const data = await response.json();
@@ -57,6 +61,9 @@ export const getCardInterpretation = async (
     
   } catch (error) {
     console.error("Error fetching card interpretation:", error);
+     if (error instanceof Error && error.message.includes('API Key')) {
+        return "Error: Invalid API Key on server.";
+     }
     return "Error: Unable to generate interpretation.";
   }
 };

@@ -1,7 +1,9 @@
+// Força a execução no ambiente Node.js para garantir compatibilidade com a biblioteca GenAI.
+export const runtime = 'nodejs';
+
 import type { DrawnCard, Language } from "../types";
 import { GoogleGenAI } from "@google/genai";
 
-// Adiciona uma declaração de tipo para o corpo da requisição
 interface RequestBody {
   drawnCard: DrawnCard;
   language: Language;
@@ -9,7 +11,7 @@ interface RequestBody {
 
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    return new Response(JSON.stringify({ error: { message: 'Method not allowed' } }), {
       status: 405,
       headers: { 'Content-Type': 'application/json', 'Allow': 'POST' },
     });
@@ -18,9 +20,8 @@ export default async function handler(req: Request) {
   try {
     const { drawnCard, language } = (await req.json()) as RequestBody;
 
-    // Validação básica
     if (!drawnCard || !language) {
-       return new Response(JSON.stringify({ error: 'Missing required fields in request body' }), {
+       return new Response(JSON.stringify({ error: { message: 'Missing required fields in request body' } }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -61,7 +62,13 @@ export default async function handler(req: Request) {
       contents: prompt,
     });
 
-    return new Response(JSON.stringify({ interpretation: response.text }), {
+    const interpretationText = response.text;
+     if (!interpretationText) {
+        console.warn("Gemini returned an empty response for the interpretation.");
+        throw new Error("The model returned an empty response.");
+    }
+
+    return new Response(JSON.stringify({ interpretation: interpretationText }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

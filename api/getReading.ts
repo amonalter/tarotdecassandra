@@ -1,7 +1,9 @@
+// Força a execução no ambiente Node.js para garantir compatibilidade com a biblioteca GenAI.
+export const runtime = 'nodejs';
+
 import type { DrawnCard, ReadingSpread, Language } from "../types";
 import { GoogleGenAI } from "@google/genai";
 
-// Adiciona uma declaração de tipo para o corpo da requisição para maior segurança.
 interface RequestBody {
   drawnCards: DrawnCard[];
   spread: ReadingSpread;
@@ -9,9 +11,8 @@ interface RequestBody {
 }
 
 export default async function handler(req: Request) {
-  // Permite apenas o método POST
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    return new Response(JSON.stringify({ error: { message: 'Method not allowed' } }), {
       status: 405,
       headers: { 'Content-Type': 'application/json', 'Allow': 'POST' },
     });
@@ -20,9 +21,8 @@ export default async function handler(req: Request) {
   try {
     const { drawnCards, spread, language } = (await req.json()) as RequestBody;
 
-    // Validação básica do corpo da requisição
     if (!drawnCards || !spread || !language) {
-      return new Response(JSON.stringify({ error: 'Missing required fields in request body' }), {
+      return new Response(JSON.stringify({ error: { message: 'Missing required fields in request body' } }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -66,8 +66,14 @@ export default async function handler(req: Request) {
       model: "gemini-2.5-flash",
       contents: prompt,
     });
+    
+    const readingText = response.text;
+    if (!readingText) {
+        console.warn("Gemini returned an empty response for the reading.");
+        throw new Error("The model returned an empty response, possibly due to safety filters.");
+    }
 
-    return new Response(JSON.stringify({ reading: response.text }), {
+    return new Response(JSON.stringify({ reading: readingText }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -75,10 +81,11 @@ export default async function handler(req: Request) {
   } catch (error) {
     console.error("Error in /api/getReading:", error);
     let errorMessage = "Unable to generate reading.";
-    // Verifica se o erro é uma instância de Error para acessar a propriedade 'message'
     if (error instanceof Error) {
         if (error.message.includes('API key not valid')) {
             errorMessage = "The API Key configured on the server is not valid. Please contact the site administrator.";
+        } else if (error.message.includes('empty response')) {
+            errorMessage = "The model could not generate a reading for this combination of cards.";
         }
     }
     
