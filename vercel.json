@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/getReading.ts": {
+      "runtime": "edge"
+    },
+    "api/getInterpretation.ts": {
+      "runtime": "edge"
+    }
+  }
+}
